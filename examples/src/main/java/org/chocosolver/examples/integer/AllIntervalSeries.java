@@ -33,8 +33,9 @@ import org.kohsuke.args4j.Option;
 public class AllIntervalSeries extends AbstractProblem {
     @SuppressWarnings("FieldMayBeFinal")
     @Option(name = "-o", usage = "All interval series size.", required = false)
-    private int m = 1000;
+//    private int m = 1000;
 
+    private int m = 31;
     @SuppressWarnings("FieldMayBeFinal")
     @Option(name = "-v", usage = " use views instead of constraints.", required = false)
     private boolean use_views = false;
@@ -72,7 +73,7 @@ public class AllIntervalSeries extends AbstractProblem {
 
     @Override
     public void configureSearch() {
-        model.getSolver().setSearch(Search.minDomLBSearch(vars));
+        model.getSolver().setSearch(Search.armaanSearch(vars));
     }
 
     @Override

@@ -15,6 +15,7 @@ import org.chocosolver.memory.IStateInt;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.delta.EnumDelta;
 import org.chocosolver.solver.variables.delta.IEnumDelta;
@@ -94,6 +95,8 @@ public final class BitsetIntVarImpl extends AbstractVariable implements IntVar {
      */
     private SignedLiteral.Set literal;
 
+    private final RLStatistics statistics;
+
     /**
      * Create an enumerated IntVar based on a bitset
      *
@@ -118,6 +121,7 @@ public final class BitsetIntVarImpl extends AbstractVariable implements IntVar {
         this.UB = env.makeInt(capacity - 1);
         this.SIZE = env.makeInt(VALUES.cardinality());
         LENGTH = capacity;
+        statistics = model.getSolver().getStatProfiler();
     }
 
     /**
@@ -153,6 +157,9 @@ public final class BitsetIntVarImpl extends AbstractVariable implements IntVar {
      */
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         assert cause != null;
         int aValue = value - OFFSET;
         boolean change = aValue >= 0 && aValue <= LENGTH && VALUES.get(aValue);
@@ -168,10 +175,10 @@ public final class BitsetIntVarImpl extends AbstractVariable implements IntVar {
                 delta.add(value, cause);
             }
 
-            if (value == getLB()) {
+            if (value == getLB()) { // if value == getLB then update LB
                 LB.set(VALUES.nextSetBit(aValue));
                 e = IntEventType.INCLOW;
-            } else if (value == getUB()) {
+            } else if (value == getUB()) { // if value == getUB then update UB
                 UB.set(VALUES.prevSetBit(aValue));
                 e = IntEventType.DECUPP;
             }

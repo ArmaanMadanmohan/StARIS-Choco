@@ -12,6 +12,7 @@ package org.chocosolver.solver.variables.view.bool;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.solver.learn.ExplanationForSignedClause;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.Variable;
@@ -36,12 +37,15 @@ import org.chocosolver.util.objects.setDataStructures.iterable.IntIterableSet;
  */
 public final class BoolNotView<B extends BoolVar> extends IntView<B> implements BoolVar {
 
+    private final RLStatistics statistics;
+
     /**
      * Create a not view based on <i>var<i/>
      * @param var a boolean variable
      */
     public BoolNotView(B var) {
         super("not(" + var.getName() + ")", var);
+        this.statistics = getModel().getSolver().getStatProfiler();
     }
 
     @Override
@@ -51,6 +55,9 @@ public final class BoolNotView<B extends BoolVar> extends IntView<B> implements 
 
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         return contains(value) && instantiateTo(1 - value, cause);
     }
 

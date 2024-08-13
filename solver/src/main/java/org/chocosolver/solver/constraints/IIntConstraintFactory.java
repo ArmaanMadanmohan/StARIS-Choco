@@ -253,6 +253,7 @@ public interface IIntConstraintFactory extends ISelf<Model> {
      */
     @SuppressWarnings("Duplicates")
     default Constraint arithm(IntVar var1, String op1, IntVar var2, String op2, int cste) {
+//        System.out.println(cste);
         if (op1.equals("*") || op1.equals("/") || op2.equals("*") || op2.equals("/")) {
             switch (op1) {
                 case "*": // v1 * v2 OP cste

@@ -117,6 +117,7 @@ public final class MeasuresRecorder extends Measures {
         restartCount = 0;
         depth = 0;
         maxDepth = 0;
+        totalDepth = 0;
     }
 
     //****************************************************************************************************************//
@@ -128,8 +129,8 @@ public final class MeasuresRecorder extends Measures {
      */
     public void incNodeCount() {
         nodeCount++;
-        depth = getCurrentDepth();
-        maxDepth = Math.max(maxDepth, depth);
+        totalDepth += getCurrentDepth(); // access currentdepth
+//        maxDepth = Math.max(maxDepth, depth);
     }
 
     /**

@@ -132,6 +132,7 @@ module org.chocosolver.solver {
     requires org.jgrapht.core;
     requires automaton;
     requires sizeof;
+    requires cpprof.java;
 
     opens org.chocosolver.memory to org.testng, sizeof;
     opens org.chocosolver.solver.constraints.unary to org.chocosolver.parsers, sizeof;

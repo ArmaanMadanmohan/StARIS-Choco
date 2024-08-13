@@ -192,9 +192,9 @@ public class Model implements IModel {
      */
     public Model(IEnvironment environment, String name, Settings settings) {
         this.name = name;
-        this.vars = new Variable[32];
+        this.vars = new Variable[32]; //variables
         this.vIdx = 0;
-        this.cstrs = new Constraint[32];
+        this.cstrs = new Constraint[32]; //constraints
         this.cIdx = 0;
         this.environment = environment;
         this.creationTime = System.nanoTime();

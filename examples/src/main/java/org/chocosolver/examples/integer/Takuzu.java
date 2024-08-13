@@ -21,6 +21,7 @@ import org.kohsuke.args4j.Option;
 
 import java.util.stream.IntStream;
 
+import static org.chocosolver.solver.search.strategy.Search.armaanSearch;
 import static org.chocosolver.solver.search.strategy.Search.minDomLBSearch;
 import static org.chocosolver.util.tools.ArrayUtils.append;
 
@@ -83,7 +84,9 @@ public class Takuzu extends AbstractProblem {
 
     @Override
     public void configureSearch() {
+
         model.getSolver().setSearch(minDomLBSearch(append(cells)));
+//        model.getSolver().setSearch(armaanSearch(append(cells)));
     }
 
     @Override

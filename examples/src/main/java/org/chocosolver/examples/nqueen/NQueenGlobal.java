@@ -11,7 +11,10 @@ package org.chocosolver.examples.nqueen;
 
 
 import org.chocosolver.solver.Model;
+import org.chocosolver.solver.trace.CPProfiler;
 import org.chocosolver.solver.variables.IntVar;
+
+import java.io.IOException;
 
 import static org.chocosolver.solver.search.strategy.Search.minDomLBSearch;
 
@@ -22,7 +25,7 @@ import static org.chocosolver.solver.search.strategy.Search.minDomLBSearch;
  * @since 31/03/11
  */
 public class NQueenGlobal extends AbstractNQueen {
-
+    int n = 5;
     @Override
     public void buildModel() {
         model = new Model("NQueen");
@@ -44,7 +47,11 @@ public class NQueenGlobal extends AbstractNQueen {
     @Override
     public void configureSearch() {
         model.getSolver().setSearch(minDomLBSearch(vars));
-    }
+        try (CPProfiler profiler = new CPProfiler(model.getSolver(), true)) {
+            while (model.getSolver().solve());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }    }
 
     public static void main(String[] args) {
         new NQueenGlobal().execute(args);

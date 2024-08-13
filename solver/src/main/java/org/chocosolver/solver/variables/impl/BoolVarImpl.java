@@ -13,6 +13,7 @@ import org.chocosolver.memory.structure.IOperation;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.delta.IEnumDelta;
 import org.chocosolver.solver.variables.delta.IIntDeltaMonitor;
@@ -81,6 +82,8 @@ public class BoolVarImpl extends AbstractVariable implements BoolVar {
      */
     private SignedLiteral.Boolean literal = null;
 
+    private final RLStatistics statistics;
+
     /**
      * Create a BoolVar {0,1} or {true, false}
      *
@@ -90,6 +93,7 @@ public class BoolVarImpl extends AbstractVariable implements BoolVar {
     public BoolVarImpl(String name, Model model) {
         super(name, model);
         mValue = kUNDEF;
+        this.statistics = model.getSolver().getStatProfiler();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +118,9 @@ public class BoolVarImpl extends AbstractVariable implements BoolVar {
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
         assert cause != null;
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         if (value == kFALSE)
             return instantiateTo(kTRUE, cause);
         else if (value == kTRUE)

@@ -13,8 +13,11 @@ import org.chocosolver.examples.AbstractProblem;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solver;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.trace.CPProfiler;
 import org.chocosolver.solver.variables.IntVar;
 import org.kohsuke.args4j.Option;
+
+import java.io.IOException;
 
 import static java.lang.System.out;
 import static org.chocosolver.solver.search.strategy.Search.inputOrderLBSearch;
@@ -103,9 +106,14 @@ public class Knapsack extends AbstractProblem {
     @Override
     public void solve() {
         model.setObjective(true, power);
-        while (model.getSolver().solve()) {
-            out.println(power);
-            prettyOut();
+//        while (model.getSolver().solve()) {
+//            out.println(power);
+//            prettyOut();
+//        }
+        try (CPProfiler profiler = new CPProfiler(model.getSolver(), true)) {
+            while (model.getSolver().solve());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

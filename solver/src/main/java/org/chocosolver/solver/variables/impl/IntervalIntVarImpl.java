@@ -14,6 +14,7 @@ import org.chocosolver.memory.IStateInt;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.delta.IIntDeltaMonitor;
 import org.chocosolver.solver.variables.delta.IIntervalDelta;
@@ -73,6 +74,8 @@ public final class IntervalIntVarImpl extends AbstractVariable implements IntVar
      */
     private SignedLiteral.Set literal;
 
+    private final RLStatistics statistics;
+
     /**
      * Create a bounded domain IntVar : [min,max]
      *
@@ -88,6 +91,7 @@ public final class IntervalIntVarImpl extends AbstractVariable implements IntVar
         IEnvironment env = model.getEnvironment();
         this.LB = env.makeInt(min);
         this.UB = env.makeInt(max);
+        this.statistics = model.getSolver().getStatProfiler();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +118,9 @@ public final class IntervalIntVarImpl extends AbstractVariable implements IntVar
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
         assert cause != null;
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         if (value == getLB()) {
             return updateLowerBound(value + 1, cause);
         } else if (value == getUB()) {

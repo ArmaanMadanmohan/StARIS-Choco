@@ -1,0 +1,47 @@
+Propagators
+ 
+* id      : row id
+* coarse  : for a given propagator, number of coarse propagations, i.e., calls to `propagate(int)`
+* fine    : for a given propagator, number of fine propagations, i.e., calls to `propagate(int,int)`
+* filter  : for a given propagator, number of times a call to propagation removes a value from a variable's domain
+* fails   : for a given propagator, number of times it throws a failure
+* name    : name of the given propagator 
+ 
+ id        coarse      fine    filter     fails  name
+ 0              7         0         2         0  "prop(Q[0].NEQ.Q[1])"
+ 1              7         0         2         1  "prop(Q[0].NEQ.Q[1]+-1)"
+ 2              6         0         2         1  "prop(Q[0].NEQ.Q[1]+1)"
+ 3              6         0         4         0  "prop(Q[0].NEQ.Q[2])"
+ 4              6         0         2         0  "prop(Q[0].NEQ.Q[2]+-2)"
+ 5              6         0         2         0  "prop(Q[0].NEQ.Q[2]+2)"
+ 6              4         0         1         0  "prop(Q[0].NEQ.Q[3])"
+ 7              4         0         1         0  "prop(Q[0].NEQ.Q[3]+-3)"
+ 8              4         0         0         0  "prop(Q[0].NEQ.Q[3]+3)"
+ 9              7         0         5         0  "prop(Q[1].NEQ.Q[2])"
+ 10             7         0         4         0  "prop(Q[1].NEQ.Q[2]+-1)"
+ 11             7         0         3         1  "prop(Q[1].NEQ.Q[2]+1)"
+ 12             5         0         2         1  "prop(Q[1].NEQ.Q[3])"
+ 13             4         0         0         0  "prop(Q[1].NEQ.Q[3]+-2)"
+ 14             4         0         1         0  "prop(Q[1].NEQ.Q[3]+2)"
+ 15             6         0         4         0  "prop(Q[2].NEQ.Q[3])"
+ 16             6         0         3         1  "prop(Q[2].NEQ.Q[3]+-1)"
+ 17             5         0         3         0  "prop(Q[2].NEQ.Q[3]+1)"
+ 18             1         0         0         0  "PropSat()"
+Total         102         0        41         5
+
+Integer variables
+ 
+* id      : row id
+* inst    : for a given integer variable, number of instantiation events
+* lower   : for a given integer variable, number of lower bound increasing events
+* upper   : for a given integer variable, number of upper bound decreasing events
+* bounds  : for a given integer variable, number of bounds modification events
+* remove  : for a given integer variable, number of value removal events
+* name    : name of the given variable 
+ 
+ id          inst     lower     upper    bounds    remove  name
+ 0              6         3         1         0         2  "Q[0]"
+ 1              7         5         2         0         3  "Q[1]"
+ 2              6         2         0         0         1  "Q[2]"
+ 3              5         3         4         0         3  "Q[3]"
+

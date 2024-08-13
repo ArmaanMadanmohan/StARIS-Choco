@@ -438,7 +438,8 @@ public class Search {
         if (vars == null || vars.length == 0) {
             throw new IllegalArgumentException("The array of variables cannot be null or empty");
         }
-        return new IntStrategy(vars, varSelector, valSelector, decisionOperator);
+//        return new IntStrategy(vars, varSelector, valSelector, decisionOperator, 0.999d);
+        return new IntStrategy(vars,varSelector,valSelector,decisionOperator);
     }
 
     /**
@@ -497,6 +498,10 @@ public class Search {
      */
     public static AbstractStrategy<IntVar> domOverWDegSearch(IntVar... vars) {
         return intVarSearch(new DomOverWDeg<>(vars, 0), new IntDomainMin(), vars);
+    }
+
+    public static AbstractStrategy<IntVar> armaanSearch(IntVar... vars) {
+        return new ArmaanAbstract(vars);
     }
 
     /**
@@ -646,6 +651,7 @@ public class Search {
      * @return int strategy based on value assignments
      */
     public static IntStrategy inputOrderLBSearch(IntVar... vars) {
+        System.out.println("inputOrderLBSearch");
         return intVarSearch(new InputOrder<>(vars[0].getModel()), new IntDomainMin(), vars);
     }
 

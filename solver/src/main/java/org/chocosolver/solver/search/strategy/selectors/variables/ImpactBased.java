@@ -125,8 +125,9 @@ public class ImpactBased extends AbstractStrategy<IntVar> implements IMonitorDow
             }
             assert vars[currentVar] == variable;
         }
-        currentVal = valueSelector.selectValue(variable);
-        return makeIntDecision(variable, currentVal);
+//        currentVal = valueSelector.selectValue(variable);
+        currentVal = 0; // seems to be doing something here
+        return makeIntDecision(variable, currentVal); // this is getting called..?
     }
 
     @Override

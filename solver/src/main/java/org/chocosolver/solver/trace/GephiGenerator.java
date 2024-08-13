@@ -102,4 +102,8 @@ public class GephiGenerator extends SearchViz {
     protected void sendRestart(int rid) {
         // nothing is done in that case
     }
+
+    public void finalizeGEXF() {
+        disconnect();
+    }
 }

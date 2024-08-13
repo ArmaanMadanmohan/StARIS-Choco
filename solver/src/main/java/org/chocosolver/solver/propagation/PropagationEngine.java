@@ -15,6 +15,7 @@ import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.solver.exception.SolverException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.solver.variables.events.IEventType;
 import org.chocosolver.solver.variables.events.PropagatorEventType;
@@ -71,6 +72,9 @@ public class PropagationEngine {
      * The last scheduled variable
      */
     protected Variable lastVar;
+
+    protected RLStatistics statistics;
+
     /**
      * One bit per queue: true if the queue is not empty.
      */
@@ -129,6 +133,7 @@ public class PropagationEngine {
         //0b00: cstr-ori
         //0b10: var-ori
         this.hybrid = model.getSettings().enableHybridizationOfPropagationEngine();
+        this.statistics = new RLStatistics(model.getSolver());
     }
 
     /**
@@ -324,6 +329,7 @@ public class PropagationEngine {
             variable.schedule();
         }
         variable.storeEvents(type.getMask(), cause);
+        statistics.onVarUpdate(variable, type, cause);
     }
 
     public void schedule(Propagator<?> prop, int pindice, int mask) {

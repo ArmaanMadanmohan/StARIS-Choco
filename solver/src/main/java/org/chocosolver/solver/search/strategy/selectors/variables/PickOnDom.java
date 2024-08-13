@@ -28,7 +28,7 @@ import java.util.ArrayList;
 public class PickOnDom<V extends Variable> extends AbstractCriterionBasedVariableSelector<V> implements IMonitorContradiction {
 
     private ArrayList<Variable> Lvars;
-    private TLongArrayList Ldeltas;
+    private TLongArrayList Ldeltas; // important
 
     private final int variant;
 
@@ -47,6 +47,9 @@ public class PickOnDom<V extends Variable> extends AbstractCriterionBasedVariabl
         solver.getEngine().setInsight(pi);
         Lvars = pi.getLvars();
         Ldeltas = pi.getLdeltas();
+        for (int i = 0; i < Lvars.size(); i++) {
+            System.out.println("Ldeltas for var " + Lvars.get(i) + ": " + Ldeltas.get(i));
+        }
         if (!solver.getSearchMonitors().contains(this)) {
             solver.plugMonitor(this);
         }
@@ -61,7 +64,7 @@ public class PickOnDom<V extends Variable> extends AbstractCriterionBasedVariabl
     }
 
     @Override
-    protected double weight(V v) {
+    protected double weight(V v) { // important
         return weights.get(v);
     }
 
@@ -72,7 +75,8 @@ public class PickOnDom<V extends Variable> extends AbstractCriterionBasedVariabl
         switch (variant) {
             case 0:
                 for (Variable lvar : Lvars) {
-                    weights.adjustOrPutValue(lvar, 1, 1);
+                    weights.adjustOrPutValue(lvar, 1, 1); //getting this one for NQueenBinary
+                    System.out.println(lvar);
                 }
                 break;
             case 1:

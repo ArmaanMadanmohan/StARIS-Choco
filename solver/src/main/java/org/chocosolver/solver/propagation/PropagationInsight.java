@@ -14,6 +14,7 @@ import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.variables.Variable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * This interface manages the propagation information.
@@ -43,11 +44,13 @@ public interface PropagationInsight {
 
     }
 
+    default void onVariableUpdate(Variable variable, Propagator<?> propagator) {
+    }
+
 
     class PickOnDom implements PropagationInsight {
         private final ArrayList<Variable> Lvars;
         private final TLongArrayList Ldeltas;
-
         private long card;
 
         private boolean changed;

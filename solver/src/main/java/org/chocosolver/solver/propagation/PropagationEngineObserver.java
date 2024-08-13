@@ -17,6 +17,8 @@ import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.solver.variables.events.IEventType;
 import org.chocosolver.solver.variables.events.PropagatorEventType;
 
+import java.util.Arrays;
+
 /**
  * This class extends {@link PropagationEngine} in order to collect
  * data relative to propagation.
@@ -76,6 +78,7 @@ public class PropagationEngineObserver extends PropagationEngine {
             }
         } catch (ContradictionException cex) {
             observer.onFailure(cex.c, lastProp);
+            statistics.onFailure(lastProp);
             throw cex;
         }
     }

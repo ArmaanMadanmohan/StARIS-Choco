@@ -90,12 +90,14 @@ public class Measures implements IMeasures, Cloneable {
     /**
      * Stores the overall maximum depth
      */
-    protected long maxDepth;
+    protected long maxDepth = 0;
 
     /**
      * Stores the current depth
      */
-    protected long depth;
+    protected long depth = 0;
+
+    public double totalDepth;
 
     /**
      * Stores the number of fixpoints
@@ -204,6 +206,10 @@ public class Measures implements IMeasures, Cloneable {
     @Override
     public final long getCurrentDepth() {
         return depth;
+    }
+
+    public final double getAverageDepth() {
+        return nodeCount == 0 ? 0 : totalDepth / nodeCount;
     }
 
     @Override

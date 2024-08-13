@@ -87,6 +87,7 @@ public class DecisionPath extends DecisionMaker implements Serializable {
      */
     public void pushDecision(Decision decision) {
         int p = last.get();
+//        System.out.println("Current value of p: " + p);
         decision.setPosition(p);
         if(decisions.size() == p){
             decisions.add(decision);

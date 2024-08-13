@@ -329,6 +329,7 @@ public abstract class AbstractVariable implements Variable {
             recordWorldIndex();
         }
         model.getSolver().getEngine().onVariableUpdate(this, event, cause);
+
         notifyMonitors(event);
         notifyViews(event, cause);
     }

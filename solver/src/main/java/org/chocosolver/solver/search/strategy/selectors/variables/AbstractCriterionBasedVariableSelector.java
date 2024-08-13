@@ -142,7 +142,6 @@ public abstract class AbstractCriterionBasedVariableSelector<V extends Variable>
             int domSize = vars[idx].getDomainSize();
             if (domSize > 1) {
                 double weight = weight(vars[idx]) / domSize;
-                //System.out.printf("%3f%n", weight);
                 if (w < weight) {
                     bests.resetQuick();
                     bests.add(idx);
@@ -161,7 +160,6 @@ public abstract class AbstractCriterionBasedVariableSelector<V extends Variable>
         }
         last.set(to);
         if (!bests.isEmpty()) {
-            //System.out.printf("%s%n", bests);
             int currentVar = bests.get(random.nextInt(bests.size()));
             best = vars[currentVar];
         }

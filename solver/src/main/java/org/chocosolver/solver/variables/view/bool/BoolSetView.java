@@ -13,6 +13,7 @@ import org.chocosolver.memory.IStateBool;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.solver.learn.ExplanationForSignedClause;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.SetVar;
 import org.chocosolver.solver.variables.Variable;
@@ -89,6 +90,7 @@ public class BoolSetView<S extends SetVar> extends AbstractView<S> implements Bo
      */
     protected SignedLiteral literal;
 
+    private final RLStatistics statistics;
 
     public BoolSetView(int v, S setVar) {
         super("boolSetView[" + v + " in " + setVar.getName() + "]", setVar);
@@ -96,6 +98,7 @@ public class BoolSetView<S extends SetVar> extends AbstractView<S> implements Bo
         this.v = v;
         boolean initialValue = setVar.getLB().contains(v) || !setVar.getUB().contains(v);
         this.fixed = getModel().getEnvironment().makeBool(initialValue);
+        this.statistics = getModel().getSolver().getStatProfiler();
     }
 
     // BoolVar methods
@@ -310,6 +313,9 @@ public class BoolSetView<S extends SetVar> extends AbstractView<S> implements Bo
     @Override
     public final boolean removeValue(int value, ICause cause) throws ContradictionException {
         assert cause != null;
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         if (value == kFALSE)
             return instantiateTo(kTRUE, cause);
         else if (value == kTRUE)

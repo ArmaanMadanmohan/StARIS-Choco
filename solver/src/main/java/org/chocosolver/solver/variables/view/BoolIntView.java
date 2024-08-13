@@ -12,6 +12,7 @@ package org.chocosolver.solver.variables.view;
 import org.chocosolver.memory.IStateBool;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.Variable;
@@ -64,6 +65,8 @@ public abstract class BoolIntView<I extends IntVar> extends IntView<I> implement
      */
     protected boolean reactOnRemoval = false;
 
+    private final RLStatistics statistics;
+
     /**
      * A view based on <i>var<i/> and a constant
      *
@@ -74,6 +77,7 @@ public abstract class BoolIntView<I extends IntVar> extends IntView<I> implement
         super("(" + var.getName() + op + cste + ")", var);
         this.cste = cste;
         this.fixed = var.getModel().getEnvironment().makeBool(false);
+        this.statistics = getModel().getSolver().getStatProfiler();
     }
 
     @Override
@@ -92,6 +96,9 @@ public abstract class BoolIntView<I extends IntVar> extends IntView<I> implement
     @Override
     public final boolean removeValue(int value, ICause cause) throws ContradictionException {
         assert cause != null;
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         if (value == kFALSE)
             return instantiateTo(kTRUE, cause);
         else if (value == kTRUE)

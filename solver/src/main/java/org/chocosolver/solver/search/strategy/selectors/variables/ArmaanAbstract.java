@@ -1,19 +1,14 @@
-/*
- * This file is part of choco-solver, http://choco-solver.org/
- *
- * Copyright (c) 2024, IMT Atlantique. All rights reserved.
- *
- * Licensed under the BSD 4-clause license.
- *
- * See LICENSE file in the project root for full license information.
- */
 package org.chocosolver.solver.search.strategy.selectors.variables;
-
 
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TObjectDoubleMap;
+import gnu.trove.map.TObjectIntMap;
+import gnu.trove.map.hash.TObjectDoubleHashMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solver;
+import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.search.limits.ACounter;
 import org.chocosolver.solver.search.loop.monitors.IMonitorDownBranch;
 import org.chocosolver.solver.search.loop.monitors.IMonitorRestart;
@@ -23,9 +18,11 @@ import org.chocosolver.solver.search.restart.Restarter;
 import org.chocosolver.solver.search.strategy.assignments.DecisionOperatorFactory;
 import org.chocosolver.solver.search.strategy.decision.Decision;
 import org.chocosolver.solver.search.strategy.selectors.values.IntValueSelector;
+import org.chocosolver.solver.search.strategy.selectors.values.TrackingValueSelector;
 import org.chocosolver.solver.search.strategy.strategy.AbstractStrategy;
 import org.chocosolver.solver.variables.IVariableMonitor;
 import org.chocosolver.solver.variables.IntVar;
+import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.solver.variables.events.IEventType;
 import org.chocosolver.util.iterators.DisposableValueIterator;
 import org.chocosolver.util.objects.ArrayVal;
@@ -34,22 +31,13 @@ import org.chocosolver.util.objects.IntMap;
 import org.chocosolver.util.objects.MapVal;
 
 import java.util.BitSet;
-import java.util.Comparator;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import static java.lang.Integer.MAX_VALUE;
 
-/**
- * Implementation of the search described in:
- * "Activity-Based Search for Black-Box Constraint Propagramming Solver",
- * Laurent Michel and Pascal Van Hentenryck, CPAIOR12.
- * <br/>
- *
- * @author Charles Prud'homme
- * @since 07/06/12
- */
-public final class ActivityBased extends AbstractStrategy<IntVar> implements IMonitorDownBranch, IMonitorRestart,
-        IVariableMonitor<IntVar>, Comparator<IntVar>/*, VariableSelector<IntVar>*/ {
+public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<IntVar> implements IMonitorDownBranch, IMonitorRestart,
+        IVariableMonitor<IntVar>/*, Comparator<IntVar>*//*, VariableSelector<IntVar>*/ {
 
     private static final double ONE = 1.0f;
 
@@ -99,8 +87,11 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
     //////////////////////////////
     //////////////////////////////
 
+    private V[] v_vars = null;
     private final Model model;
-    private IntValueSelector valueSelector = new ActivityValueSelector();
+    private AbstractCriterionBasedVariableSelector variableSelector;
+    private IntValueSelector valueSelector = new ArmaanValueSelector();
+    private TrackingValueSelector valSelector = new ArmaanValueSelector();
     private final IntMap v2i;
     private final IntVar[] vars;
 
@@ -124,13 +115,15 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
 
     private int currentVar = -1, currentVal = -1;
 
+    private int currentTrackingVal = -1;
+
     private final TIntList bests = new TIntArrayList();
 
-    private boolean restartAfterEachLeaf = true;
+    private boolean restartAfterEachLeaf = false;
 
     private Restarter mRestarter;
 
-    public ActivityBased(final Model model, IntVar[] vars, IntValueSelector valueSelector,
+    public ArmaanAbstract(final Model model, IntVar[] vars, IntValueSelector valueSelector,
                          double g, double d, int a, int samplingIterationForced, long seed) {
         super(vars);
         this.model = model;
@@ -138,6 +131,8 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
         if (valueSelector != null) {
             this.valueSelector = valueSelector;
         }
+        this.v_vars = (V[]) vars;
+        this.variableSelector = new ArmaanVariableSelector(v_vars, 0, 32);
         A = new double[vars.length];
         mA = new double[vars.length];
         sA = new double[vars.length];
@@ -151,13 +146,13 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
         this.d = d;
         assert a > 0;
         this.a = a;
-        sampling = true;
+//        sampling = true;
         random = new Random(seed);
         nb_probes = 0;
         this.samplingIterationForced = samplingIterationForced;
     }
 
-    public ActivityBased(IntVar[] vars) {
+    public ArmaanAbstract(IntVar[] vars) {
         this(vars[0].getModel(),
                 vars,
                 null,
@@ -187,7 +182,7 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
                 vAct[i] = new ArrayVal(ampl, vars[i].getLB());
             }
         }
-        if (restartAfterEachLeaf) {
+        if (restartAfterEachLeaf) { // consider commenting out - not really concerned with this
             mRestarter = new Restarter(new MonotonicCutoff(1),
                     new ACounter(model.getSolver().getMeasures(), 1) {
                         @Override
@@ -199,7 +194,12 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
 
             model.getSolver().addRestarter(mRestarter);
         }
-        return true;
+        return variableSelector.init();
+    }
+
+    @Override
+    public void onUpdate(IntVar var, IEventType evt) {
+        affected.set(v2i.get(var.getId()));
     }
 
     @Override
@@ -215,6 +215,7 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
         if (restartAfterEachLeaf) {
             removeRFMove();
         }
+//        variableSelector.remove();
     }
 
     @Override
@@ -235,6 +236,7 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
             assert vars[currentVar] == variable;
         }
         currentVal = valueSelector.selectValue(variable);
+        currentTrackingVal = valSelector.activityValue(variable);
         return model.getSolver().getDecisionPath().makeIntDecision(variable, DecisionOperatorFactory.makeIntEq(), currentVal);
     }
 
@@ -245,10 +247,10 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
         double bestVal = -1.0d;
         for (int i = 0; i < vars.length; i++) {
             int ds = vars[i].getDomainSize();
+//            System.out.println("Domain size for " + i + ": " + ds);
             if (ds > 1) {
                 double a = A[v2i.get(vars[i].getId())] / ds;
-//                System.out.println("A for " + i + ": " + A[v2i.get(vars[i].getId())]);
-                System.out.println("Activity for " + i + ": " + a);
+//                System.out.println("Activity for " + i + ": " + a);
                 if (a > bestVal) {
                     bests.clear();
                     bests.add(i);
@@ -262,11 +264,13 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
             currentVar = bests.get(random.nextInt(bests.size()));
             best = vars[currentVar];
         }
-        System.out.println("Best variable: " + best);
+
+        Variable variable = variableSelector.getVariable(vars); // does it matter if we're actually using this selector as long as we're getting the data?
+//        return computeDecision((IntVar) variable); // TODO: edit to make it not cast
         return computeDecision(best);
     }
 
-    @Override
+//    @Override
     public int compare(IntVar o1, IntVar o2) {
         if (sampling) {
             return random.nextBoolean() ? 1 : -1;
@@ -283,12 +287,6 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
             return 1;
         }
         return 0;
-    }
-
-
-    @Override
-    public void onUpdate(IntVar var, IEventType evt) {
-        affected.set(v2i.get(var.getId()));
     }
 
     @Override
@@ -308,13 +306,15 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
                 if (affected.get(i)) {
                     A[i] += 1;
                 }
-                System.out.println("Value of A for " + i + ": " + A[i]);
+//                System.out.println("Value of A for " + i + ": " + A[i]);
             }
-            double act = vAct[currentVar].activity(currentVal);
+//            System.out.println("currentVar: " + currentVar + ", currentVal: " + currentTrackingVal);
+//            System.out.println("vAct.length: " + vAct.length + ", A.length: " + A.length);
+            double act = vAct[currentVar].activity(currentTrackingVal);
             if (sampling) {
-                vAct[currentVar].setactivity(currentVal, act + affected.cardinality());
+                vAct[currentVar].setactivity(currentTrackingVal, act + affected.cardinality());
             } else {
-                vAct[currentVar].setactivity(currentVal, (act * (a - 1) + affected.cardinality()) / a);
+                vAct[currentVar].setactivity(currentTrackingVal, (act * (a - 1) + affected.cardinality()) / a);
             }
 //            System.out.println("Act for variable " + currentVar + " at value " + currentVal + ": " + act);
             currentVar = -1;
@@ -323,6 +323,7 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
 
     @Override
     public void beforeRestart() {
+        variableSelector.afterRestart();
     }
 
     @Override
@@ -400,20 +401,124 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
         return true;
     }
 
-    private class ActivityValueSelector implements IntValueSelector { //value selector class within activity based
+    public class ArmaanVariableSelector<V extends Variable>
+            extends AbstractCriterionBasedVariableSelector<V>
+            implements IMonitorRestart {
+
+        /**
+         * Related to CHS,
+         * Bottom alpha limit
+         */
+        private static final double ALPHA_LIMIT = 0.06;
+        /**
+         * Decreasing step for {@link #alpha}.
+         */
+        private static final double STEP = 1e-6;
+        private static final double D = 1e-4;
+        private static final double DECAY = .995;
+
+        /**
+         * Score of each propagator.
+         */
+        private final TObjectDoubleMap<Propagator> q = new TObjectDoubleHashMap<>(10, 0.5f, 0.0);
+        /**
+         * Step-size, 0 < a < 1.
+         */
+        private double alpha = .4d;
+        /**
+         * Last {@link #conflicts} value where a propagator led to a failure.
+         */
+        private final TObjectIntMap<Propagator> conflict = new TObjectIntHashMap<>(10, 0.5f, 0);
+
+        public ArmaanVariableSelector(V[] vars, long seed) {
+            this(vars, seed, Integer.MAX_VALUE);
+        }
+
+        public ArmaanVariableSelector(V[] vars, long seed, int flushThs) {
+            super(vars, seed, flushThs);
+        }
 
         @Override
-        public int selectValue(IntVar variable) {
-            currentVal = variable.getLB();
+        public boolean init() {
+            if (!solver.getSearchMonitors().contains(this)) {
+                solver.plugMonitor(this);
+            }
+            return true;
+        }
+
+        @Override
+        public void remove() {
+            if (solver.getSearchMonitors().contains(this)) {
+                solver.unplugMonitor(this);
+            }
+        }
+
+        @Override
+        protected double weight(Variable v) {
+            double[] w = {0.};
+            v.streamPropagators().forEach(prop -> {
+                long fut = Stream.of(prop.getVars())
+                        .filter(Variable::isInstantiated)
+                        .limit(2)
+                        .count();
+//            System.out.println("prop " + prop + ": " + fut);
+                if (fut > 1) {
+                    w[0] += refinedWeights.getOrDefault(prop, rw)[0] + D;
+                }
+            });
+            System.out.println("Weight for variable " + v.getId() + ": " + w[0] * 10000);
+            return w[0];
+        }
+
+        @Override
+        void increase(Propagator<?> prop, Element elt, double[] ws) {
+            // for CHS, 0 stores the scoring
+            // compute the reward
+            double r = 1d / (conflicts - elt.ws[2] + 1);
+            // update q
+            ws[0] = (1 - alpha) * ws[0] + alpha * r;
+            // decrease a
+            alpha = Math.max(ALPHA_LIMIT, alpha - STEP);
+            elt.ws[2] = conflicts;
+        }
+
+        @Override
+        public void afterRestart() {
+            if (flushWeights(q)) {
+                q.clear();
+                conflict.forEachEntry((a1, b) -> {
+                    conflict.put(a1, conflicts);
+                    return true;
+                });
+            } else {
+                for (Propagator p : q.keySet()) {
+                    double qj = q.get(p);
+                    q.put(p, qj * Math.pow(DECAY, (conflicts - conflict.get(p))));
+                }
+                alpha = .4d;
+            }
+        }
+    }
+
+    private class ArmaanValueSelector implements IntValueSelector, TrackingValueSelector {
+
+        @Override
+        public int selectValue(IntVar var) {
+            return var.getLB();
+        }
+
+        @Override
+        public int activityValue(IntVar variable) {
+            currentTrackingVal = variable.getLB();
             if (sampling) {
                 int ds = variable.getDomainSize();
                 int n = random.nextInt(ds);
                 if (variable.hasEnumeratedDomain()) {
                     while (n-- > 0) {
-                        currentVal = variable.nextValue(currentVal);
+                        currentTrackingVal = variable.nextValue(currentTrackingVal);
                     }
                 } else {
-                    currentVal += n;
+                    currentTrackingVal += n;
                 }
             } else {
                 if (variable.hasEnumeratedDomain()) {
@@ -423,6 +528,7 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
                     while (it.hasNext()) {
                         int value = it.next();
                         double current = vAct[currentVar].activity(value);
+//                        System.out.println("Activity for var " + currentVar + " at value " + value + ": " + current);
                         if (current < bestVal) {
                             bests.clear();
                             bests.add(value);
@@ -431,15 +537,15 @@ public final class ActivityBased extends AbstractStrategy<IntVar> implements IMo
                             bests.add(value);
                         }
                     }
-                    currentVal = bests.get(random.nextInt(bests.size()));
+                    currentTrackingVal = bests.get(random.nextInt(bests.size()));
                 } else {
                     int lb = variable.getLB();
                     int ub = variable.getUB();
-                    currentVal = vAct[currentVar].activity(lb) < vAct[currentVar].activity(ub) ?
+                    currentTrackingVal = vAct[currentVar].activity(lb) < vAct[currentVar].activity(ub) ?
                             lb : ub;
                 }
             }
-            return currentVal;
+            return currentTrackingVal;
         }
     }
 

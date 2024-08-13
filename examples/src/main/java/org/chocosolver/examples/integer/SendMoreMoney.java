@@ -36,8 +36,11 @@ package org.chocosolver.examples.integer; /**
 
 import org.chocosolver.examples.AbstractProblem;
 import org.chocosolver.solver.Model;
+import org.chocosolver.solver.search.loop.monitors.IMonitorOpenNode;
 import org.chocosolver.solver.search.strategy.Search;
 import org.chocosolver.solver.variables.IntVar;
+
+import java.io.IOException;
 
 
 /**
@@ -95,12 +98,25 @@ public class SendMoreMoney extends AbstractProblem {
     public void configureSearch() {
     }
 
+    public void pauseSolving() {
+        try {
+            System.out.println("Press Enter to continue... \n ----------------------");
+            System.in.read();
+            while (System.in.available() > 0) System.in.read(); // Clear buffer
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void solve() {
-        model.getSolver().setSearch(Search.minDomLBSearch(S, E, N, D, M, O, R, Y));
+//        model.getSolver().setSearch(Search.minDomLBSearch(S, E, N, D, M, O, R, Y));
+        model.getSolver().setSearch(Search.armaanSearch(S, E, N, D, M, O, R, Y));
+//        model.getSolver().setSearch(Search.activityBasedSearch(S, E, N, D, M, O, R, Y));
+//        model.getSolver().setSearch(Search.conflictHistorySearch(S, E, N, D, M, O, R, Y));
         model.getSolver().showStatistics();
         model.getSolver().showSolutions();
-        while (model.getSolver().solve()) {
+//        while (model.getSolver().solve()) {
 //            System.out.printf("%s = %d\n", S.getName(), S.getValue());
 //            System.out.printf("%s = %d\n", E.getName(), E.getValue());
 //        }
@@ -110,7 +126,17 @@ public class SendMoreMoney extends AbstractProblem {
 //                st.append(String.format("%s : %d\n\t", ALL[i].getName(), ALL[i].getValue()));
 //            }
 //            System.out.println(st.toString());
-        }
+
+//        }
+        model.getSolver().plugMonitor(new IMonitorOpenNode() {
+            @Override
+            public void afterOpenNode() {
+                model.getSolver().printShortStatistics();
+                model.getSolver().trackDepth();
+                pauseSolving();
+            }
+        });
+        model.getSolver().findAllSolutions();
     }
 
     public static void main(String[] args) {

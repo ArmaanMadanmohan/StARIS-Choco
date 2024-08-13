@@ -12,6 +12,7 @@ package org.chocosolver.solver.variables.impl;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.IVariableMonitor;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.Variable;
@@ -68,6 +69,8 @@ public class FixedIntVarImpl extends AbstractVariable implements IntVar {
      */
     protected SignedLiteral literal;
 
+    private final RLStatistics statistics;
+
     /**
      * Creates a variable whom domain is natively reduced to the singleton {<code>constante</code>}.
      *
@@ -78,10 +81,14 @@ public class FixedIntVarImpl extends AbstractVariable implements IntVar {
     public FixedIntVarImpl(String name, int constante, Model model) {
         super(name, model);
         this.constante = constante;
+        this.statistics = model.getSolver().getStatProfiler();
     }
 
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         if (value == constante) {
             assert cause != null;
             model.getSolver().getEventObserver().removeValue(this, constante, cause);

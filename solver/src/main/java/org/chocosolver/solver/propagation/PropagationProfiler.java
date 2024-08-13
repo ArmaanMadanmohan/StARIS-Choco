@@ -12,19 +12,30 @@ package org.chocosolver.solver.propagation;
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.constraints.Propagator;
+import org.chocosolver.solver.constraints.binary.PropNotEqualX_YC;
+import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.learn.EventRecorder;
+import org.chocosolver.solver.search.loop.monitors.IMonitorContradiction;
+import org.chocosolver.solver.search.loop.monitors.IMonitorDownBranch;
+import org.chocosolver.solver.variables.IVariableMonitor;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.SetVar;
 import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.solver.variables.events.IEventType;
 import org.chocosolver.solver.variables.events.IntEventType;
 import org.chocosolver.solver.variables.events.SetEventType;
+import org.chocosolver.solver.variables.impl.BitsetIntVarImpl;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.Stream;
+
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * This class observes a {@link PropagationEngine} in order to collect
@@ -34,15 +45,18 @@ import java.util.stream.Stream;
  * @author Charles Prud'homme
  * @since 12/10/2021
  */
-public class PropagationProfiler implements PropagationObserver {
+public class PropagationProfiler implements PropagationObserver, IMonitorDownBranch {
 
-    private final Model model;
     private final long[] propCounters = new long[4];
     private final HashMap<Propagator<?>, Long> coarses;
     private final HashMap<Propagator<?>, Long> fines;
     private final HashMap<Propagator<?>, Long> failures;
     private final HashMap<Propagator<?>, Long> filters;
     private final HashMap<Variable, HashMap<IEventType, Long>> changes;
+    private final Model model;
+    private final HashMap<String, Long> varFailures;
+//    private final HashMap<String, Long> varModifications;
+//    private final HashMap<Propagator<?>, Long> propagatorCalls;
 
     /**
      * A propagation engine profiler.
@@ -51,28 +65,38 @@ public class PropagationProfiler implements PropagationObserver {
      */
     public PropagationProfiler(Model model) {
         this.model = model;
+//        this.varModifications = new HashMap<>();
         this.coarses = new HashMap<>();
         this.fines = new HashMap<>();
         this.filters = new HashMap<>();
         this.failures = new HashMap<>();
         this.changes = new HashMap<>();
+        this.varFailures = new HashMap<>();
+//        this.propagatorCalls = new HashMap<>();
     }
 
     @Override
     public void onCoarseEvent(Propagator<?> propagator) {
         coarses.compute(propagator, (k, c) -> c == null ? 1 : c + 1);
+//        propagatorCalls.compute(propagator, (p, count) -> count == null ? 1 : count + 1);
+//            System.out.println(propagator.getClass().getDeclaredField("x").getInt(propagator));
         propCounters[0]++;
     }
 
     @Override
     public void onFineEvent(Propagator<?> propagator) {
         fines.compute(propagator, (k, c) -> c == null ? 1 : c + 1);
+//        propagatorCalls.compute(propagator, (p, count) -> count == null ? 1 : count + 1);
         propCounters[1]++;
     }
 
     @Override
     public void onFailure(ICause cause, Propagator<?> propagator) {
         failures.compute(propagator, (k, c) -> c == null ? 1 : c + 1);
+        Variable variable = model.getSolver().getContradictionException().v;
+        varFailures.compute("(" + variable.getName() + ")", (k, c) -> c == null ? 1 : c + 1);
+        System.out.println("Failure! " + variable);
+        System.out.println("VarFailures: " + varFailures);
         propCounters[3]++;
     }
 
@@ -88,7 +112,43 @@ public class PropagationProfiler implements PropagationObserver {
     public void onVariableModification(Variable variable, IEventType type, ICause cause) {
         HashMap<IEventType, Long> evt = changes.computeIfAbsent(variable, k -> new HashMap<>());
         evt.compute(type, (t, c) -> c == null ? 1 : c + 1);
+//        System.out.println("Updating variable " + variable + " with event type " + evt + ". Cause: " + cause.toString());
+//        varModifications.put(variable.getName(), varModifications.getOrDefault(variable.getName(), 0L) + 1);
     }
+
+//    public void printVariableStats(Variable[] variables) {
+//        for (Variable variable : variables) {
+//            HashMap<IEventType, Long> evts = changes.getOrDefault(variable, new HashMap<>());
+//
+//            if (variable instanceof IntVar) {
+//                long in = evts.getOrDefault(IntEventType.INSTANTIATE, 0L);
+//                long lb = evts.getOrDefault(IntEventType.INCLOW, 0L);
+//                long ub = evts.getOrDefault(IntEventType.DECUPP, 0L);
+//                long bd = evts.getOrDefault(IntEventType.BOUND, 0L);
+//                long rm = evts.getOrDefault(IntEventType.REMOVE, 0L);
+//                System.out.printf("Variable %s - Inst: %d, Lower Bound: %d, Upper Bound: %d, Bounds: %d, Remove: %d%n",
+//                        variable.getName(), in, lb, ub, bd, rm);
+//            } else if (variable instanceof SetVar) {
+//                long ka = evts.getOrDefault(SetEventType.ADD_TO_KER, 0L);
+//                long re = evts.getOrDefault(SetEventType.REMOVE_FROM_ENVELOPE, 0L);
+//                System.out.printf("Variable %s - Kernel Adds: %d, Envelope Removes: %d%n",
+//                        variable.getName(), ka, re);
+//            } else {
+//                System.out.printf("Variable %s - No statistics available%n", variable.getName());
+//            }
+//        }
+//        System.out.println("VarModifications: " + varModifications);
+//    }
+//
+//    public void printPropagators() {
+//        System.out.println("Propagator Call Statistics:");
+//
+//        for (Propagator<?> propagator : propagatorCalls.keySet()) {
+//            long calls = propagatorCalls.getOrDefault(propagator, 0L);
+//            System.out.printf("Propagator %s - Called: %d times%n",
+//                    propagator.getClass().getSimpleName(), calls);
+//        }
+//    }
 
     /**
      * Write profiling statistics to the file.

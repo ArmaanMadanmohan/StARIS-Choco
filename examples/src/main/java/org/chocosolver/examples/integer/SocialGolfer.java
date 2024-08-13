@@ -11,10 +11,13 @@ package org.chocosolver.examples.integer;
 
 import org.chocosolver.examples.AbstractProblem;
 import org.chocosolver.solver.Model;
+import org.chocosolver.solver.trace.CPProfiler;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.util.ESat;
 import org.kohsuke.args4j.Option;
+
+import java.io.IOException;
 
 import static org.chocosolver.solver.search.strategy.Search.inputOrderUBSearch;
 import static org.chocosolver.util.tools.ArrayUtils.flatten;
@@ -143,7 +146,11 @@ public class SocialGolfer extends AbstractProblem {
 
     @Override
     public void solve() {
-        model.getSolver().solve();
+        try (CPProfiler profiler = new CPProfiler(model.getSolver(), true)) {
+            while (model.getSolver().solve());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         System.out.printf("Social golfer(%d,%d,%d)%n", g, s, w);
         StringBuilder st = new StringBuilder();
@@ -168,7 +175,7 @@ public class SocialGolfer extends AbstractProblem {
         System.out.println(st);
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new SocialGolfer().execute(args);
     }
 }

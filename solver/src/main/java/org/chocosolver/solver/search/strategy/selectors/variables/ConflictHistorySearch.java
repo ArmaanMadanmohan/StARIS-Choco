@@ -88,10 +88,12 @@ public class ConflictHistorySearch<V extends Variable>
                     .filter(Variable::isInstantiated)
                     .limit(2)
                     .count();
+//            System.out.println()
             if (fut > 1) {
                 w[0] += refinedWeights.getOrDefault(prop, rw)[0] + D;
             }
         });
+        System.out.println("Weight for variable " + v.getId() + ": " + w[0]);
         return w[0];
     }
 

@@ -13,6 +13,8 @@ package org.chocosolver.examples.nqueen;
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.variables.IntVar;
 
+import java.io.IOException;
+
 /**
  * <br/>
  *
@@ -50,7 +52,7 @@ public class NQueenDualBinary extends AbstractNQueen {
     }
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         new NQueenDualBinary().execute(args);
     }
 }

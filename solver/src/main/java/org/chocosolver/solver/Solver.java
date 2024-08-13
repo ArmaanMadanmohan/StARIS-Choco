@@ -32,6 +32,7 @@ import org.chocosolver.solver.search.loop.move.MoveSeq;
 import org.chocosolver.solver.search.loop.propagate.Propagate;
 import org.chocosolver.solver.search.measure.IMeasures;
 import org.chocosolver.solver.search.measure.MeasuresRecorder;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.search.restart.AbstractRestart;
 import org.chocosolver.solver.search.strategy.BlackBoxConfigurator;
 import org.chocosolver.solver.search.strategy.Search;
@@ -144,6 +145,8 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
      */
     protected Action action;
 
+    protected RLStatistics statistics;
+
     /**
      * The measure recorder to keep up to date
      */
@@ -243,6 +246,9 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
      */
     private Logger logger = new ANSILogger();
 
+    private long maxDepth = 0;
+    private long totalDepth = 0;
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////      CONSTRUCTOR      //////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +267,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
         dpath = new DecisionPath(aModel.getEnvironment());
         action = initialize;
         mMeasures = new MeasuresRecorder(mModel.getName());
+        statistics = new RLStatistics(this);
         criteria = new ArrayList<>();
         mMeasures.setSearchState(SearchState.NEW);
         mMeasures.setBoundsManager(objectivemanager);
@@ -323,7 +330,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
     @SuppressWarnings("WeakerAccess")
     public boolean searchLoop() {
         boolean solution = false;
-        boolean left = true;
+        boolean left = true; // look at this
         Thread th = Thread.currentThread();
         while (!stop) {
             stop = isStopCriterionMet();
@@ -338,20 +345,25 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
                 case initialize:
                     throw new UnsupportedOperationException("should not initialize during search loop");
                 case propagate:
+//                    System.out.println("propagating");
                     propagate(left);
                     break;
                 case fixpoint:
+//                    System.out.println("fixpoint");
                     fixpoint();
                     break;
                 case extend:
+//                    System.out.println("extending");
                     left = true;
                     extend();
                     break;
                 case repair:
+//                    System.out.println("repairing");
                     left = false;
                     repair();
                     break;
                 case validate:
+                    System.out.println("validating");
                     stop = solution = validate();
                     break;
                 default:
@@ -477,7 +489,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
     private void doPropagate() throws ContradictionException {
         //WARNING: keep the order as is (read javadoc for more details)
         dpath.buildNext();
-        objectivemanager.postDynamicCut();
+        objectivemanager.postDynamicCut(); // not important
         engine.propagate();
         dpath.apply();
         engine.propagate();
@@ -525,10 +537,11 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
     protected void extend() {
         searchMonitors.beforeOpenNode();
         mMeasures.incNodeCount();
+        statistics.incNodeCount();
         action = propagate;
         if (restarter.mustRestart(this)) {
             this.restart();
-        } else if (!M.extend(this)) {
+        } else if (!M.extend(this)) { // if extend returns false this runs
             action = validate;
         }
         searchMonitors.afterOpenNode();
@@ -1506,12 +1519,23 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
 
     @Override
     public long getMaxDepth() {
-        return getMeasures().getMaxDepth();
+//        return getMeasures().getMaxDepth();
+        maxDepth = Math.max(maxDepth, getCurrentDepth());
+        return maxDepth;
     }
 
     @Override
     public long getCurrentDepth() {
         return getDecisionPath().size();
+    }
+
+    public RLStatistics getStatProfiler() {
+        return this.statistics;
+    }
+
+    public double getAverageDepth() {
+        mMeasures.totalDepth += getCurrentDepth();
+        return mMeasures.getAverageDepth();
     }
 
     @Override

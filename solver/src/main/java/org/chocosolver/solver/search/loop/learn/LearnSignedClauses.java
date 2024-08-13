@@ -18,7 +18,7 @@ import org.chocosolver.solver.search.strategy.decision.IntDecision;
 
 /**
  * A learn implementation that is able to learn signed clause on failure. The implication graph is
- * recorded during propagation and then aanlysed, with the constraint in conflict as input to learn
+ * recorded during propagation and then analysed, with the constraint in conflict as input to learn
  * a signed clause to add to the model. <p>
  *
  * The algorithm is based on :

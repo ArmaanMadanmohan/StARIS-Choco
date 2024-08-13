@@ -11,6 +11,7 @@ package org.chocosolver.solver.variables.view.integer;
 
 import org.chocosolver.solver.ICause;
 import org.chocosolver.solver.exception.ContradictionException;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.delta.IIntDeltaMonitor;
 import org.chocosolver.solver.variables.delta.NoDelta;
@@ -37,6 +38,7 @@ public final class IntAffineView<I extends IntVar> extends IntView<I> {
     public final boolean p; // positive
     public final int a;
     public final int b;
+    private final RLStatistics statistics;
 
     /**
      * <i>y</i> is an affine view of <i>x</i>: <i>y = a*x + b</i>.
@@ -50,6 +52,7 @@ public final class IntAffineView<I extends IntVar> extends IntView<I> {
         this.p = a >= 0;
         this.a = Math.abs(a);
         this.b = b;
+        this.statistics = getModel().getSolver().getStatProfiler();
     }
 
     @Override
@@ -70,6 +73,9 @@ public final class IntAffineView<I extends IntVar> extends IntView<I> {
     @Override
     public boolean removeValue(int value, ICause cause) throws ContradictionException {
         assert cause != null;
+        if (this.contains(value)) {
+            statistics.removeValue(value, this);
+        }
         int inf = getLB();
         int sup = getUB();
         if (inf > value || value > sup) return false;

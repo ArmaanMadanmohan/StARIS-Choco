@@ -12,6 +12,7 @@ package org.chocosolver.solver.trace;
 import org.chocosolver.solver.ISelf;
 import org.chocosolver.solver.Solution;
 import org.chocosolver.solver.Solver;
+import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.propagation.PropagationEngineObserver;
 import org.chocosolver.solver.propagation.PropagationObserver;
 import org.chocosolver.solver.propagation.PropagationProfiler;
@@ -20,10 +21,9 @@ import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.util.tools.StringUtils;
 
-import java.io.Closeable;
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.List;
+
 
 /**
  * This aims at simplifying resolution trace output by providing
@@ -87,6 +87,21 @@ public interface IOutputFactory extends ISelf<Solver> {
         printVersion();
         printFeatures();
         ref().log().println(ref().getMeasures().toString());
+
+    }
+
+    default void trackDepth() {
+        ref().log().println("Current/Max depth: " + ref().getCurrentDepth() + "/" + ref().getMaxDepth());
+        ref().log().println("Average depth: " + ref().getAverageDepth());
+    }
+
+    default void printCstrs() {
+        Constraint[] constraints = ref().getModel().getCstrs();
+        ref().log().print("Constraints: ");
+        for (Constraint constraint : constraints) {
+            ref().log().print("'" + constraint.toString() + "'  ");
+        }
+        ref().log().println("");
     }
 
     /**
@@ -199,7 +214,8 @@ public interface IOutputFactory extends ISelf<Solver> {
      *
      * @param message the message to print.
      */
-    default void showDecisions(final IMessage message) {
+    default void showDecisions(final IMessage message) { // simply shows the decision made. need to make it send the
+                                                         // domains, variables, and constraints
         ref().plugMonitor(new IMonitorDownBranch() {
             @Override
             public void beforeDownBranch(boolean left) {
@@ -210,6 +226,17 @@ public interface IOutputFactory extends ISelf<Solver> {
         });
     }
 
+//    default void sendDecisions(final IMessage message) {
+//        ref().plugMonitor(new IMonitorDownBranch() {
+//            @Override
+//            public void beforeDownBranch(boolean left) {
+//                ref().log().printf("%s %s ", StringUtils.pad("", ref().getEnvironment().getWorldIndex(), "."),
+//                        ref().getDecisionPath().lastDecisionToString());
+//                ref().log().printf(" // %s \n", message.print());
+//            }
+//        });
+//    }
+
     /**
      * Plug a search monitor which outputs a message on each decision.
      * <p>
@@ -219,6 +246,20 @@ public interface IOutputFactory extends ISelf<Solver> {
      */
     default void showDecisions() {
         showDecisions(120);
+    }
+    default void sendDecisions(File file) throws IOException {
+        FileWriter fileWriter = new FileWriter(file);
+        PrintWriter writer = new PrintWriter(fileWriter);
+        DefaultDecisionMessage message = new DefaultDecisionMessage(ref(), 120);
+        ref().plugMonitor(new IMonitorDownBranch() {
+            @Override
+            public void beforeDownBranch(boolean left) {
+                writer.printf("%s %s ", StringUtils.pad("", ref().getEnvironment().getWorldIndex(), "."),
+                        ref().getDecisionPath().lastDecisionToString());
+                writer.printf(" // %s \n", message.print());
+                writer.flush();
+            }
+        });
     }
 
     /**
