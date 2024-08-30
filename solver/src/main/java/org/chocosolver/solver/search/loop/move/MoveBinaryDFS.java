@@ -60,7 +60,6 @@ public class MoveBinaryDFS implements Move {
     public boolean extend(Solver solver) {
         boolean extended = false;
         Decision current = strategy.getDecision();
-        System.out.println("Current decision: " + current);
         if (current != null) { // null means there is no more decision
             solver.getDecisionPath().pushDecision(current);
             solver.getEnvironment().worldPush();

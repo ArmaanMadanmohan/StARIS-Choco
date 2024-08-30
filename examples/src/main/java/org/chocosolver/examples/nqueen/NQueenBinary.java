@@ -53,11 +53,6 @@ public class NQueenBinary extends AbstractNQueen {
     public void configureSearch() {
 //        model.getSolver().setSearch(inputOrderLBSearch(vars));
         model.getSolver().setSearch(armaanSearch(vars));
-//        try {
-//            model.getSolver().sendDecisions(new File("NQueenBinary_Decisions.txt"));
-//        } catch (IOException e) {
-//        }
-
     }
 
     @Override
@@ -75,22 +70,14 @@ public class NQueenBinary extends AbstractNQueen {
                     s.log().print("'" + var.toString() + "'  ");
                 }
                 System.out.println("");
-                statistics.newBranch();
-                System.out.printf("%.1f\n", statistics.getAverageDepth());
+                System.out.printf("%.0f\n", statistics.getAverageDepth());
                 System.out.println("Current/Max: " + statistics.getCurrentDepth() + "/" + statistics.getMaxDepth());
-                pauseSolving();
+                statistics.pauseSolving();
             }
         });
-        s.plugMonitor((IMonitorContradiction) cex -> pauseSolving());
+//        s.plugMonitor((IMonitorContradiction) cex -> pauseSolving());
         s.plugMonitor(new NogoodFromRestarts(model));
-//        s.plugMonitor(new IMonitorDownBranch() {
-//            @Override
-//            public void afterDownBranch(boolean left) { // TODO: find a way to pause when there is a failure
-//                //TODO: Signed clauses, No-Goods
-//                profiler.printVariableStats(model.getVars());
-//                profiler.printPropagators();
-//            }
-//        });
+        //signed clauses, no-goods
         profiler = s.profilePropagation();
         s.findAllSolutions();
         try {
@@ -106,15 +93,7 @@ public class NQueenBinary extends AbstractNQueen {
         new NQueenBinary().execute(args);
     }
 
-    public void pauseSolving() {
-        try {
-            System.out.println("Press Enter to continue... \n ----------------------");
-            System.in.read();
-            while (System.in.available() > 0) System.in.read(); // Clear buffer
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+
 }
 
 

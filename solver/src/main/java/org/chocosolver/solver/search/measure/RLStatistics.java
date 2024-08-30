@@ -1,20 +1,21 @@
 package org.chocosolver.solver.search.measure;
 
 import org.chocosolver.solver.*;
+import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.variables.Variable;
 import org.chocosolver.solver.variables.events.IEventType;
 
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Stack;
 
 public class RLStatistics {
 
     protected HashMap<String, HashMap<IEventType, Long>> varEventsTotal;
-    protected HashMap<String, HashMap<IEventType, Long>> varEventsCurrentBranch;
-    protected List<HashMap<String, HashMap<IEventType, Long>>> varEventsAllBranches;
+    Stack<HashMap<String, HashMap<IEventType, Long>>> varEventsCurrentBranch;
+    protected HashMap<String, HashMap<IEventType, Long>> currentNodeStats;
     protected HashMap<String, Long> varModifications;
     protected HashMap<ICause, Long> propCalls;
     protected HashMap<String, Long> varFailures;
@@ -22,16 +23,16 @@ public class RLStatistics {
     protected HashMap<String, HashMap<Long, Long>> valueRemovals;
     protected long maxDepth;
     protected long totalDepth;
-    protected HashMap<String, Long> varWeight;
-    protected HashMap<String, Long> varActivity;
     protected Solver solver;
     protected long nodeCount;
-    protected long backtrackCount;
+    protected long currentNode;
+    protected Stack<Boolean> branchStats;
+    protected boolean isLeft;
+    protected HashMap<String, Double> activities;
 
     public RLStatistics(Solver solver) {
         this.solver = solver;
         varEventsTotal = new HashMap<>();
-        varEventsAllBranches = new ArrayList<>();
         varModifications = new HashMap<>();
         propCalls = new HashMap<>();
         propFailures = new HashMap<>();
@@ -39,70 +40,170 @@ public class RLStatistics {
         valueRemovals = new HashMap<>();
         nodeCount = 0;
         maxDepth = 0;
-        backtrackCount = 0;
+        this.varEventsCurrentBranch = new Stack<>();
+        currentNode = 0;
+        branchStats = new Stack<>();
+        isLeft = false;
+        activities = new HashMap<>();
     }
-    // keep track of the node count. or at every override close node/downbranch, update totalVarModifications
-    //at every decision node, I want to be able to consult the modifications made to each variable. first make a total one. then, what would be the
-    //reason to have ones associated with each decision. perhaps make a hashmap with a decision and hashmap of event types for that decision?
 
+    /**
+    * Get total number of backtracks so far.
+     **/
+    public long getBacktracks() {
+        return solver.getBackTrackCount();
+    }
+
+    /**
+    * Get total number of failures so far.
+     **/
+    public long getFailures() {
+        return solver.getFailCount();
+    }
+
+    /**
+    * Get total resolution time.
+     **/
+    public float getResolutionTime() {
+        return solver.getTimeCount();
+    }
+
+    /**
+    * Get total number of solutions so far.
+     **/
+    public long getSolutionCount() {
+        return solver.getSolutionCount();
+    }
+
+    /**
+    * Get total number of backjumps so far.
+     **/
+    public long getBackjumpCount() {
+        return solver.getBackjumpCount();
+    }
+
+    /**
+    * Get total number of restarts so far.
+     **/
+    public long getRestartCount() {
+        return solver.getRestartCount();
+    }
+
+    /**
+    * Displays a list of constraints involved in the search.
+     **/
+    public Constraint[] getConstraints() {
+        return solver.getModel().getCstrs();
+    }
+
+    /**
+    * Pauses the solving process until the user presses Enter. Chain with BeforeOpenNode monitor.
+     **/
+    public void pauseSolving() {
+        try {
+            System.out.println("Press Enter to continue... \n ----------------------");
+            do System.in.read(); // Clear buffer
+            while (System.in.available() > 0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sets the activity of a variable (implemented in ArmaanAbstract)
+     */
+    public void setActivity(Variable var, double activity) {
+        activities.put(var.getName(), activity);
+    }
+
+    /**
+     * Returns the activity of a variable.
+     */
+    public double getActivity(Variable var) {
+        return activities.get(var.getName());
+    }
+
+    /**
+    * Increases node count for calculating average depth.
+     **/
     public void incNodeCount() {
         nodeCount++;
     }
 
-    public void onVarUpdate(Variable var, IEventType type, ICause cause) {
+    /**
+    * Calculates the various (left, right) decisions taken at each node; one can view the current one too.
+     **/
+    public void leftBranchDetails(boolean isLeft) {
+        this.isLeft = isLeft;
+        branchStats.push(isLeft);
+    }
+
+    /**
+    * Stores the propagators and events involved in each variable modification, as well as the events involved in
+    * the current branch only.
+     **/
+    public void onVarUpdate(Variable var, IEventType type, ICause cause, boolean newNode) {
         varEventsTotal.computeIfAbsent(var.getName(), k -> new HashMap<>()).merge(type, 1L, Long::sum);
         varModifications.compute(var.getName(), (t,c) -> c == null ? 1L : c + 1L);
         propCalls.compute(cause, (t,c) -> c == null ? 1L : c + 1L);
+        if (currentNode == var.getModel().getSolver().getNodeCount() && !varEventsCurrentBranch.isEmpty()) {
+            currentNodeStats = this.varEventsCurrentBranch.pop();
+            HashMap<IEventType, Long> varStats = currentNodeStats.computeIfAbsent(var.getName(), k -> new HashMap<>());
+            varStats.merge(type, 1L, Long::sum);
+            this.varEventsCurrentBranch.push(currentNodeStats);
+        }
+        if (currentNode != var.getModel().getSolver().getNodeCount()) {
+            currentNode++;
+            HashMap<String, HashMap<IEventType, Long>> currentNodeStats = new HashMap<>();
+            varEventsCurrentBranch.push(currentNodeStats);
+        }
     }
 
+    /**
+    * Gets the depth of the current decision branch.
+     **/
     public long getCurrentDepth() {
-        return solver.getCurrentDepth() - 1;
+        return solver.getCurrentDepth();
     }
 
+    /**
+    * Gets the maximum depth of the decision tree.
+     **/
     public long getMaxDepth() {
         return solver.getMaxDepth();
     }
 
+    /**
+    * Gets the average depth of the decision tree.
+     **/
     public double getAverageDepth() {
         totalDepth += solver.getCurrentDepth();
         return nodeCount != 0 ? (double) totalDepth/nodeCount : 0;
     }
 
+    /**
+    * Gets the variables involved in the search.
+     **/
     public Variable[] getVars() {
         return solver.getModel().getVars();
     }
 
-    public void onFailure(Propagator<?> lastProp) { // effectively cause can be cast to prop
+    /**
+    * Gets the propagators and variables involved in the contradiction and adjusts the current branch.
+     **/
+    public void onFailure(Propagator<?> lastProp) {
         propFailures.compute(lastProp, (t,c) -> c == null ? 1L : 1L + c);
         Variable var = solver.getContradictionException().v;
-        varFailures.compute(var.getName(), (t, c) -> c == null ? 1L : 1L + c); //or var.toString or simply change this to Variable HashMap
+        varFailures.compute(var.getName(), (t, c) -> c == null ? 1L : 1L + c);
+        if (!varEventsCurrentBranch.isEmpty()) {
+            varEventsCurrentBranch.pop();
+        }
     }
 
+    /**
+    * Gets the value removals from the domain of the variable.
+     **/
     public void removeValue(int value, IntVar integers) {
         valueRemovals.computeIfAbsent(integers.getName(), k -> new HashMap<>()).merge((long) value, 1L, Long::sum);
     }
-
-    public void newBranch() {
-//        if (solver.getMeasures().backtrackCount > backtrackCount) {
-//            varEventsAllBranches.add(varEventsCurrentBranch);
-//            backtrackCount = solver.getMeasures().backtrackCount;
-//        }
-//        if (solver.getSolutionCount() > solutionCount || solver.getRestartCount() > restartCount) {
-//
-//        }
-    }
-
-
-    // backjump, solutions, restarts, fails, time for nodes (hook into Measures class through solver?)
-
-        // hashmap of variables and list of total associated events and/or value removals
-    // hashmap of variables and list of associated events for node
-    // hashmap of propagators (causes) and failures
-    // hashmap of causes/propagators and total times called
-    // current depth, max depth, average depth
-
-    // how to differentiate between branches (use restart/solution as a delimiter, place them into buckets. use a stack? pop when backtracking?)
-
-    // nogoods
-    // weights, activity
 }

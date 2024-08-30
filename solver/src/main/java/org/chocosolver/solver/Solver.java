@@ -330,7 +330,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
     @SuppressWarnings("WeakerAccess")
     public boolean searchLoop() {
         boolean solution = false;
-        boolean left = true; // look at this
+        boolean left = true;
         Thread th = Thread.currentThread();
         while (!stop) {
             stop = isStopCriterionMet();
@@ -341,29 +341,25 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
                     mMeasures.setSearchState(SearchState.KILLED);
                 }
             }
+            statistics.leftBranchDetails(left);
             switch (action) {
                 case initialize:
                     throw new UnsupportedOperationException("should not initialize during search loop");
                 case propagate:
-//                    System.out.println("propagating");
                     propagate(left);
                     break;
                 case fixpoint:
-//                    System.out.println("fixpoint");
                     fixpoint();
                     break;
                 case extend:
-//                    System.out.println("extending");
                     left = true;
                     extend();
                     break;
                 case repair:
-//                    System.out.println("repairing");
                     left = false;
                     repair();
                     break;
                 case validate:
-                    System.out.println("validating");
                     stop = solution = validate();
                     break;
                 default:
@@ -541,7 +537,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
         action = propagate;
         if (restarter.mustRestart(this)) {
             this.restart();
-        } else if (!M.extend(this)) { // if extend returns false this runs
+        } else if (!M.extend(this)) {
             action = validate;
         }
         searchMonitors.afterOpenNode();
@@ -1526,7 +1522,7 @@ public class Solver implements ISolver, IMeasures, IOutputFactory {
 
     @Override
     public long getCurrentDepth() {
-        return getDecisionPath().size();
+        return getDecisionPath().size() - 1;
     }
 
     public RLStatistics getStatProfiler() {

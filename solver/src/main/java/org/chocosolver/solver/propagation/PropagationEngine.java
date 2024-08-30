@@ -329,7 +329,7 @@ public class PropagationEngine {
             variable.schedule();
         }
         variable.storeEvents(type.getMask(), cause);
-        statistics.onVarUpdate(variable, type, cause);
+        statistics.onVarUpdate(variable, type, cause, true);
     }
 
     public void schedule(Propagator<?> prop, int pindice, int mask) {

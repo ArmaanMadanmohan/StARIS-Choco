@@ -12,6 +12,7 @@ import org.chocosolver.solver.constraints.Propagator;
 import org.chocosolver.solver.search.limits.ACounter;
 import org.chocosolver.solver.search.loop.monitors.IMonitorDownBranch;
 import org.chocosolver.solver.search.loop.monitors.IMonitorRestart;
+import org.chocosolver.solver.search.measure.RLStatistics;
 import org.chocosolver.solver.search.restart.AbstractRestart;
 import org.chocosolver.solver.search.restart.MonotonicCutoff;
 import org.chocosolver.solver.search.restart.Restarter;
@@ -99,6 +100,7 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
     private final double[] mA; // the mean -- maintained incrementally
     private final double[] sA; // the variance -- maintained incrementally -- std dev = sqrt(sA/path-1)
     private final IVal[] vAct; // activity of each value of all variables
+    private final RLStatistics statistics;
 
     private final BitSet affected; // store affected variables
 
@@ -150,6 +152,7 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
         random = new Random(seed);
         nb_probes = 0;
         this.samplingIterationForced = samplingIterationForced;
+        this.statistics = model.getSolver().getStatProfiler();
     }
 
     public ArmaanAbstract(IntVar[] vars) {
@@ -215,7 +218,6 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
         if (restartAfterEachLeaf) {
             removeRFMove();
         }
-//        variableSelector.remove();
     }
 
     @Override
@@ -247,10 +249,8 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
         double bestVal = -1.0d;
         for (int i = 0; i < vars.length; i++) {
             int ds = vars[i].getDomainSize();
-//            System.out.println("Domain size for " + i + ": " + ds);
             if (ds > 1) {
                 double a = A[v2i.get(vars[i].getId())] / ds;
-//                System.out.println("Activity for " + i + ": " + a);
                 if (a > bestVal) {
                     bests.clear();
                     bests.add(i);
@@ -265,8 +265,7 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
             best = vars[currentVar];
         }
 
-        Variable variable = variableSelector.getVariable(vars); // does it matter if we're actually using this selector as long as we're getting the data?
-//        return computeDecision((IntVar) variable); // TODO: edit to make it not cast
+        Variable variable = variableSelector.getVariable(vars);
         return computeDecision(best);
     }
 
@@ -306,10 +305,9 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
                 if (affected.get(i)) {
                     A[i] += 1;
                 }
-//                System.out.println("Value of A for " + i + ": " + A[i]);
+                statistics.setActivity(vars[i], A[i]);
+
             }
-//            System.out.println("currentVar: " + currentVar + ", currentVal: " + currentTrackingVal);
-//            System.out.println("vAct.length: " + vAct.length + ", A.length: " + A.length);
             double act = vAct[currentVar].activity(currentTrackingVal);
             if (sampling) {
                 vAct[currentVar].setactivity(currentTrackingVal, act + affected.cardinality());
@@ -461,12 +459,11 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
                         .filter(Variable::isInstantiated)
                         .limit(2)
                         .count();
-//            System.out.println("prop " + prop + ": " + fut);
                 if (fut > 1) {
                     w[0] += refinedWeights.getOrDefault(prop, rw)[0] + D;
                 }
             });
-            System.out.println("Weight for variable " + v.getId() + ": " + w[0] * 10000);
+//            System.out.println("Weight for variable " + v.getId() + ": " + w[0] * 10000);
             return w[0];
         }
 
@@ -528,7 +525,6 @@ public final class ArmaanAbstract<V extends Variable> extends AbstractStrategy<I
                     while (it.hasNext()) {
                         int value = it.next();
                         double current = vAct[currentVar].activity(value);
-//                        System.out.println("Activity for var " + currentVar + " at value " + value + ": " + current);
                         if (current < bestVal) {
                             bests.clear();
                             bests.add(value);
